@@ -36,7 +36,9 @@ CREATE TABLE IF NOT EXISTS annotationMembers (
   documentId TEXT NOT NULL,
   annotationId TEXT NOT NULL,
   lastRead INTEGER,
-  permission TEXT,
+  annotationCreatedAt INTEGER,
+  createdAt INTEGER,
+  updatedAt INTEGER,
   FOREIGN KEY (userId) REFERENCES users (id)
   FOREIGN KEY (documentId) REFERENCES documents (id) ON DELETE CASCADE
   FOREIGN KEY (annotationId) REFERENCES annotations (id) ON DELETE CASCADE
@@ -46,6 +48,8 @@ CREATE TABLE IF NOT EXISTS documentMembers (
   userId TEXT,
   documentId TEXT NOT NULL,
   lastRead INTEGER NOT NULL,
+  createdAt INTEGER,
+  updatedAt INTEGER,
   FOREIGN KEY (userId) REFERENCES users (id)
   FOREIGN KEY (documentId) REFERENCES documents (id) ON DELETE CASCADE
 );
