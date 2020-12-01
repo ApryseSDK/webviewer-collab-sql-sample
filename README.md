@@ -23,8 +23,14 @@ npm install
 
 ## Run
 
+Start the server
 ```
-npm start
+npm run start-server
+```
+
+Start the client
+```
+npm run start-client
 ```
 
 ## How to use

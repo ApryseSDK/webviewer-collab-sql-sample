@@ -212,7 +212,7 @@ module.exports = {
         [documentId, since]
       )
 
-      return resp.count;
+      return resp[0]['COUNT(id)'];
     },
     annotationMemberCount: async ({
       userId,
@@ -224,7 +224,7 @@ module.exports = {
         [documentId, userId, since]
       )
 
-      return resp.count;
+      return resp[0]['COUNT(id)'];
     }
   },
   Mutation: {
