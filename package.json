@@ -4,18 +4,18 @@
   "description": "WebViewer sample to show how you can create a real time collaboration app with WebViewer using WebSocket, SQLite3, and Node.js server.",
   "main": "client/index.js",
   "scripts": {
-    "dev-server": "nodemon server/server.js",
     "start-server": "node server/server.js",
     "start-client": "parcel client/index.html --port=8000"
   },
   "author": "PDFTron Systems Inc.",
   "dependencies": {
+    "@pdftron/collab-client": "^0.1.1",
+    "@pdftron/collab-server": "^0.1.4",
     "@pdftron/webviewer": "^7.1.2",
-    "@pdftron/collab-server": "^1.0.0",
-    "@pdftron/collab-client": "^1.0.0",
     "dotenv": "^8.2.0",
     "parcel": "^1.12.4",
-    "sqlite3": "^4.0.6"
+    "sqlite3": "^4.0.6",
+    "winston": "^3.3.3"
   },
   "devDependencies": {
     "nodemon": "^2.0.5",

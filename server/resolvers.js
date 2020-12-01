@@ -44,6 +44,63 @@ const getQueryResponse = (query, param) =>
       resolve(rows);
     });
   });
+
+/**
+ * A utility function to merge multiple WHERE clauses together
+ */
+const getWhereClause = (clauses) => {
+  
+  // remove empty clauses
+  const filtered = clauses.filter(c => !!c)
+
+  return filtered.reduce((acc, clause, index) => {
+    const isLast = index === filtered.length - 1;
+    return acc + `${clause} ${isLast ? '' : 'AND '}`
+  }, 'WHERE ').trim()
+}
+
+/**
+ * A utility function to convert an array of items into an IN clause
+ */
+const valueIn = (value, options) => {
+  return `${value} IN (${options.reduce((acc, item, index) => {
+    const isLast = index === options.length - 1;
+    const suffix = isLast ? '' : ','
+
+    if (typeof item === 'string') {
+      return acc + `'${item}'${suffix}`
+    } 
+
+    return acc + `${item}${suffix}`
+  }, '')})`
+}
+
+/**
+ * A utility that converts a filter object to a set of WHERE clauses
+ */
+const getFilterQuery = (filters) => {
+  return [
+    filters.createdBefore && `${toUnixTimestampSelector('created_at')} < ${filters.createdBefore}`,
+    filters.createdAfter && `${toUnixTimestampSelector('created_at')} > ${filters.createdAfter}`,
+    filters.updatedBefore && `${toUnixTimestampSelector('updated_at')} < ${filters.updatedBefore}`,
+    filters.updatedAfter && `${toUnixTimestampSelector('updated_at')} > ${filters.updatedAfter}`,
+  ]
+}
+
+const orderAndLimit = (query, filters) => {
+  const { orderBy, orderDirection, limit } = filters;
+
+  if (orderBy) {
+    query += ` ORDER BY ${orderBy} ${orderDirection}`
+  }
+
+  if (limit) {
+    query += ` LIMIT ${limit}`
+  }
+
+  return query;
+}
+
 module.exports = {
   Query: {
     user: async id => {
@@ -59,80 +116,127 @@ module.exports = {
       );
       return res[0] || null;
     },
-    annotation: async id => {
-      const res = await getQueryResponse(
-        `SELECT * FROM annotations WHERE id = ?`,
-        [id]
-      );
-      return res[0] || null;
-    },
-    document: async id => {
-      const res = await getQueryResponse(
-        `SELECT * FROM documents WHERE id = ?`,
-        [id]
-      );
-      return res[0] || null;
-    },
-    annotationMember: async (annotId, userId, memberId) => {
-      if (memberId) {
-        const resWithMemberId = await getQueryResponse(
-          `SELECT * FROM annotationMembers WHERE id = ?`,
-          [memberId]
-        );
-        return resWithMemberId[0] || null;
-      }
-      const res = await getQueryResponse(
-        `SELECT * FROM annotationMembers WHERE userId = ? AND annotationId = ?`,
-        [userId, annotId]
-      );
-      return res[0] || null;
-    },
-    documentMember: async memberId => {
-      const res = await getQueryResponse(
-        `SELECT * FROM documentMembers WHERE id = ?`,
-        [memberId]
-      );
-      return res[0] || null;
-    },
-    annotations: async docId => {
-      const res = await getQueryResponse(
-        `SELECT * FROM annotations WHERE documentId = ?`,
-        [docId]
-      );
+
+    annotations: async ({
+      ids,
+      documentId,
+      pageNumbers,
+      inReplyTo,
+      filters = {}
+    }) => {
+
+      let query = 'SELECT * FROM annotations'
+      
+      query += ` ${getWhereClause([
+        documentId && `documentId = '${documentId}'`,
+        inReplyTo && `inReplyTo = '${inReplyTo}'`,
+        ids && ids.length && valueIn('id', ids),
+        pageNumbers && pageNumbers.length && valueIn('pageNumber', pageNumbers),
+        ...getFilterQuery(filters)
+      ])}`
+
+      query = orderAndLimit(query, filters);
+
+      const res = await getQueryResponse(query, []);
       return res;
     },
-    userDocuments: async userId => {
-      const res = await getQueryResponse(
-        `SELECT * FROM documents WHERE id IN ( SELECT documentId AS id FROM documentMembers WHERE userId = ?)`,
-        [userId]
-      );
+
+    documents: async ({
+      ids,
+      userId,
+      filters = {}
+    }) => {
+      
+      let query = 'SELECT * FROM documents'
+      
+      query += ` ${getWhereClause([
+        userId && `userId = '${userId}'`,
+        ids && ids.length && valueIn('id', ids),
+        ...getFilterQuery(filters)
+      ])}`
+
+      query = orderAndLimit(query, filters);
+
+      const res = await getQueryResponse(query, []);
       return res;
     },
-    annotationMembers: async annotId => {
-      const res = await getQueryResponse(
-        `SELECT * FROM annotationMembers WHERE annotationId = ?`,
-        [annotId]
-      );
+
+
+    annotationMembers: async ({
+      ids,
+      annotationId,
+      userId,
+      filters = {}
+    }) => {
+      let query = 'SELECT * FROM annotationMembers'
+      
+      query += ` ${getWhereClause([
+        annotationId && `annotationId = '${annotationId}'`,
+        userId && `userId = '${userId}'`,
+        ids && ids.length && valueIn('id', ids),
+        ...getFilterQuery(filters)
+      ])}`
+
+      query = orderAndLimit(query, filters);
+
+      const res = await getQueryResponse(query, []);
       return res;
     },
-    documentMembers: async docId => {
-      const res = await getQueryResponse(
-        `SELECT * FROM documentMembers WHERE documentId = ?`,
-        [docId]
-      );
+    documentMembers: async ({
+      ids,
+      documentId,
+      userId,
+      filters = {}
+    }) => {
+      let query = 'SELECT * FROM documentMembers'
+      
+      query += ` ${getWhereClause([
+        documentId && `documentId = '${documentId}'`,
+        userId && `userId = '${userId}'`,
+        ids && ids.length && valueIn('id', ids),
+        ...getFilterQuery(filters)
+      ])}`
+
+      query = orderAndLimit(query, filters);
+
+      const res = await getQueryResponse(query, []);
       return res;
     },
+    annotationCount: async ({
+      documentId,
+      since
+    }) => {
+
+      const resp = await getQueryResponse(
+        `SELECT COUNT(id) FROM annotations WHERE documentId = ? AND createdAt > ?`,
+        [documentId, since]
+      )
+
+      return resp[0]['COUNT(id)'];
+    },
+    annotationMemberCount: async ({
+      userId,
+      documentId,
+      since
+    }) => { 
+      const resp = await getQueryResponse(
+        `SELECT COUNT(id) FROM annotationMembers WHERE documentId = ? AND userId = ? AND annotationCreatedAt > ?`,
+        [documentId, userId, since]
+      )
+
+      return resp[0]['COUNT(id)'];
+    }
   },
   Mutation: {
     addUser: async user => {
       const res = await getQueryResponse(
         `
           INSERT INTO users
-          (id, type, email, userName, createdAt)
+          (id, type, email, userName, createdAt, updatedAt)
           VALUES
-          (?, ?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?)
         `,
-        [user.id, user.type, user.email, user.userName, user.createdAt]
+        [user.id, user.type, user.email, user.userName, user.createdAt, user.updatedAt]
       );
       return res[0] || null;
     },
@@ -140,9 +244,9 @@ module.exports = {
       const res = await getQueryResponse(
         `
           INSERT INTO annotations
-          (id, xfdf, authorId, documentId, pageNumber, createdAt, inReplyTo)
+          (id, xfdf, authorId, documentId, pageNumber, createdAt, updatedAt, inReplyTo)
           VALUES
-          (?, ?, ?, ?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           user.id,
@@ -151,6 +255,7 @@ module.exports = {
           user.documentId,
           user.pageNumber,
           user.createdAt,
+          user.updatedAt,
           user.inReplyTo,
         ]
       );
@@ -159,10 +264,10 @@ module.exports = {
     editAnnotation: async (id, editAnnotInput) => {
       const editedAnnot = await getQueryResponse(
         `
-          UPDATE annotations SET xfdf = ?, pageNumber = ?
+          UPDATE annotations SET xfdf = ?, pageNumber = ?, updatedAt = ?
           WHERE id = ?
         `,
-        [editAnnotInput.xfdf, editAnnotInput.pageNumber, id]
+        [editAnnotInput.xfdf, editAnnotInput.pageNumber, editAnnotInput.updatedAt, id]
       );
       return editedAnnot;
     },
@@ -178,11 +283,11 @@ module.exports = {
       const res = await getQueryResponse(
         `
           INSERT INTO documents
-          (id, createdAt, authorId, isPublic, name)
+          (id, createdAt, updatedAt, authorId, isPublic, name)
           VALUES
-          (?, ?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?)
         `,
-        [doc.id, doc.createdAt, doc.authorId, doc.isPublic, doc.name]
+        [doc.id, doc.createdAt, doc.updatedAt, doc.authorId, doc.isPublic, doc.name]
       );
       return res[0] || null;
     },
@@ -191,10 +296,10 @@ module.exports = {
       const res = await getQueryResponse(
         `
           UPDATE documents
-          SET name = ?, isPublic = ?
+          SET name = ?, isPublic = ?, updatedAt = ?
           WHERE id = ?
         `,
-        [editDocInput.name, editDocInput.isPublic, id]
+        [editDocInput.name, editDocInput.isPublic, editDocInput.updatedAt, id]
       );
       return res[0] || null;
     },
@@ -215,11 +320,11 @@ module.exports = {
       const res = await getQueryResponse(
         `
           INSERT INTO documentMembers
-          (id, userId, documentId, lastRead)
+          (id, userId, documentId, lastRead, createdAt, updatedAt)
           VALUES
-          (?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?)
         `,
-        [member.id, member.userId, member.documentId, member.lastRead]
+        [member.id, member.userId, member.documentId, member.lastRead, member.createdAt, member.updatedAt]
       );
       return res[0] || null;
     },
@@ -227,10 +332,10 @@ module.exports = {
       const editedMemer = await getQueryResponse(
         `
           UPDATE documentMembers
-          SET lastRead = ?
+          SET lastRead = ?, updatedAt = ?
           WHERE id = ?
         `,
-        [editMemberInput.lastRead, id]
+        [editMemberInput.lastRead, editMemberInput.updatedAt, id]
       );
       return editedMemer;
     },
@@ -251,17 +356,19 @@ module.exports = {
       const res = await getQueryResponse(
         `
           INSERT INTO annotationMembers
-          (id, documentId, lastRead, annotationId, permission, userId)
+          (id, documentId, lastRead, annotationId, userId, createdAt, updatedAt, annotationCreatedAt)
           VALUES
-          (?, ?, ?, ?, ?, ?)
+          (?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           member.id,
           member.documentId,
           member.lastRead,
           member.annotationId,
-          member.permission,
           member.userId,
+          member.createdAt,
+          member.updatedAt,
+          member.annotationCreatedAt,
         ]
       );
       return res[0] || null;
@@ -270,10 +377,10 @@ module.exports = {
       const editedMemer = await getQueryResponse(
         `
           UPDATE annotationMembers
-          SET lastRead = ?, permission = ?
+          SET lastRead = ?, updatedAt = ?
           WHERE id = ?
         `,
-        [editMemberInput.lastRead, editMemberInput.permission, id]
+        [editMemberInput.lastRead, editMemberInput.updatedAt, id]
       );
       return editedMemer;
     },
