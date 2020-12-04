@@ -7,11 +7,11 @@ const initDatabaseQuery = fs
   .toString();
 
 // Create and initialize database
-if (!fs.existsSync('server/collab.db')) {
-  fs.writeFileSync('server/collab.db', '');
+if (!fs.existsSync('./server/collab.db')) {
+  fs.writeFileSync('./server/collab.db', '');
 }
 // Connect to SQLite database
-const db = new sqlite3.Database('./collab.db', err => {
+const db = new sqlite3.Database('./server/collab.db', err => {
   if (err) {
     return console.error(err.message);
   }
@@ -33,11 +33,11 @@ db.serialize(() => {
     }
   });
 });
-
 const getQueryResponse = (query, param) =>
   new Promise((resolve, reject) => {
     db.all(query, param, (err, rows) => {
       if (err) {
+        console.error(`query: ${query}, param ${param}`);
         console.error(err);
         reject(err);
       }
@@ -48,58 +48,56 @@ const getQueryResponse = (query, param) =>
 /**
  * A utility function to merge multiple WHERE clauses together
  */
-const getWhereClause = (clauses) => {
-  
+const getWhereClause = clauses => {
   // remove empty clauses
-  const filtered = clauses.filter(c => !!c)
+  const filtered = clauses.filter(c => !!c);
 
-  return filtered.reduce((acc, clause, index) => {
-    const isLast = index === filtered.length - 1;
-    return acc + `${clause} ${isLast ? '' : 'AND '}`
-  }, 'WHERE ').trim()
-}
+  return filtered
+    .reduce((acc, clause, index) => {
+      const isLast = index === filtered.length - 1;
+      return `${acc}${clause} ${isLast ? '' : 'AND '}`;
+    }, 'WHERE ')
+    .trim();
+};
 
 /**
  * A utility function to convert an array of items into an IN clause
  */
-const valueIn = (value, options) => {
-  return `${value} IN (${options.reduce((acc, item, index) => {
+const valueIn = (value, options) =>
+  `${value} IN (${options.reduce((acc, item, index) => {
     const isLast = index === options.length - 1;
-    const suffix = isLast ? '' : ','
+    const suffix = isLast ? '' : ',';
 
     if (typeof item === 'string') {
-      return acc + `'${item}'${suffix}`
-    } 
+      return `${acc}'${item}'${suffix}`;
+    }
 
-    return acc + `${item}${suffix}`
-  }, '')})`
-}
+    return `${acc}${item}${suffix}`;
+  }, '')})`;
 
 /**
  * A utility that converts a filter object to a set of WHERE clauses
  */
-const getFilterQuery = (filters) => {
-  return [
-    filters.createdBefore && `${toUnixTimestampSelector('created_at')} < ${filters.createdBefore}`,
-    filters.createdAfter && `${toUnixTimestampSelector('created_at')} > ${filters.createdAfter}`,
-    filters.updatedBefore && `${toUnixTimestampSelector('updated_at')} < ${filters.updatedBefore}`,
-    filters.updatedAfter && `${toUnixTimestampSelector('updated_at')} > ${filters.updatedAfter}`,
-  ]
-}
+const getFilterQuery = filters => [
+  filters.createdBefore && `createdAt < ${filters.createdBefore}`,
+  filters.createdAfter && `createdAt > ${filters.createdAfter}`,
+  filters.updatedBefore && `updatedAt < ${filters.updatedBefore}`,
+  filters.updatedAfter && `updatedAt > ${filters.updatedAfter}`,
+];
 
 const orderAndLimit = (query, filters) => {
   const { orderBy, orderDirection, limit } = filters;
-
+  let newQuery = query;
   if (orderBy) {
-    query += ` ORDER BY ${orderBy} ${orderDirection}`
+    newQuery += ` ORDER BY ${orderBy} ${orderDirection}`;
   }
 
   if (limit) {
-    query += ` LIMIT ${limit}`
+    newQuery += ` LIMIT ${limit}`;
   }
 
-  return query;
-}
+  return newQuery;
+};
 
 module.exports = {
   Query: {
@@ -122,18 +120,17 @@ module.exports = {
       documentId,
       pageNumbers,
       inReplyTo,
-      filters = {}
+      filters = {},
     }) => {
+      let query = 'SELECT * FROM annotations';
 
-      let query = 'SELECT * FROM annotations'
-      
       query += ` ${getWhereClause([
         documentId && `documentId = '${documentId}'`,
         inReplyTo && `inReplyTo = '${inReplyTo}'`,
         ids && ids.length && valueIn('id', ids),
         pageNumbers && pageNumbers.length && valueIn('pageNumber', pageNumbers),
-        ...getFilterQuery(filters)
-      ])}`
+        ...getFilterQuery(filters),
+      ])}`;
 
       query = orderAndLimit(query, filters);
 
@@ -141,19 +138,15 @@ module.exports = {
       return res;
     },
 
-    documents: async ({
-      ids,
-      userId,
-      filters = {}
-    }) => {
-      
-      let query = 'SELECT * FROM documents'
-      
+    documents: async ({ ids, userId, filters = {} }) => {
+      let query = 'SELECT * FROM documents';
+
       query += ` ${getWhereClause([
-        userId && `userId = '${userId}'`,
+        userId &&
+          `id in (SELECT documentId FROM documentMembers WHERE userId = '${userId}')`,
         ids && ids.length && valueIn('id', ids),
-        ...getFilterQuery(filters)
-      ])}`
+        ...getFilterQuery(filters),
+      ])}`;
 
       query = orderAndLimit(query, filters);
 
@@ -161,71 +154,52 @@ module.exports = {
       return res;
     },
 
+    annotationMembers: async ({ ids, annotationId, userId, filters = {} }) => {
+      let query = 'SELECT * FROM annotationMembers';
 
-    annotationMembers: async ({
-      ids,
-      annotationId,
-      userId,
-      filters = {}
-    }) => {
-      let query = 'SELECT * FROM annotationMembers'
-      
       query += ` ${getWhereClause([
         annotationId && `annotationId = '${annotationId}'`,
         userId && `userId = '${userId}'`,
         ids && ids.length && valueIn('id', ids),
-        ...getFilterQuery(filters)
-      ])}`
+        ...getFilterQuery(filters),
+      ])}`;
 
       query = orderAndLimit(query, filters);
 
       const res = await getQueryResponse(query, []);
       return res;
     },
-    documentMembers: async ({
-      ids,
-      documentId,
-      userId,
-      filters = {}
-    }) => {
-      let query = 'SELECT * FROM documentMembers'
-      
+    documentMembers: async ({ ids, documentId, userId, filters = {} }) => {
+      let query = 'SELECT * FROM documentMembers';
+
       query += ` ${getWhereClause([
         documentId && `documentId = '${documentId}'`,
         userId && `userId = '${userId}'`,
         ids && ids.length && valueIn('id', ids),
-        ...getFilterQuery(filters)
-      ])}`
+        ...getFilterQuery(filters),
+      ])}`;
 
       query = orderAndLimit(query, filters);
 
       const res = await getQueryResponse(query, []);
       return res;
     },
-    annotationCount: async ({
-      documentId,
-      since
-    }) => {
-
+    annotationCount: async ({ documentId, since }) => {
       const resp = await getQueryResponse(
         `SELECT COUNT(id) FROM annotations WHERE documentId = ? AND createdAt > ?`,
         [documentId, since]
-      )
+      );
 
       return resp[0]['COUNT(id)'];
     },
-    annotationMemberCount: async ({
-      userId,
-      documentId,
-      since
-    }) => { 
+    annotationMemberCount: async ({ userId, documentId, since }) => {
       const resp = await getQueryResponse(
         `SELECT COUNT(id) FROM annotationMembers WHERE documentId = ? AND userId = ? AND annotationCreatedAt > ?`,
         [documentId, userId, since]
-      )
+      );
 
       return resp[0]['COUNT(id)'];
-    }
+    },
   },
   Mutation: {
     addUser: async user => {
@@ -236,7 +210,14 @@ module.exports = {
           VALUES
           (?, ?, ?, ?, ?, ?)
         `,
-        [user.id, user.type, user.email, user.userName, user.createdAt, user.updatedAt]
+        [
+          user.id,
+          user.type,
+          user.email,
+          user.userName,
+          user.createdAt,
+          user.updatedAt,
+        ]
       );
       return res[0] || null;
     },
@@ -267,7 +248,12 @@ module.exports = {
           UPDATE annotations SET xfdf = ?, pageNumber = ?, updatedAt = ?
           WHERE id = ?
         `,
-        [editAnnotInput.xfdf, editAnnotInput.pageNumber, editAnnotInput.updatedAt, id]
+        [
+          editAnnotInput.xfdf,
+          editAnnotInput.pageNumber,
+          editAnnotInput.updatedAt,
+          id,
+        ]
       );
       return editedAnnot;
     },
@@ -287,7 +273,14 @@ module.exports = {
           VALUES
           (?, ?, ?, ?, ?, ?)
         `,
-        [doc.id, doc.createdAt, doc.updatedAt, doc.authorId, doc.isPublic, doc.name]
+        [
+          doc.id,
+          doc.createdAt,
+          doc.updatedAt,
+          doc.authorId,
+          doc.isPublic,
+          doc.name,
+        ]
       );
       return res[0] || null;
     },
@@ -324,7 +317,14 @@ module.exports = {
           VALUES
           (?, ?, ?, ?, ?, ?)
         `,
-        [member.id, member.userId, member.documentId, member.lastRead, member.createdAt, member.updatedAt]
+        [
+          member.id,
+          member.userId,
+          member.documentId,
+          member.lastRead,
+          member.createdAt,
+          member.updatedAt,
+        ]
       );
       return res[0] || null;
     },
@@ -343,7 +343,7 @@ module.exports = {
       try {
         await getQueryResponse(
           `
-            DELETE FROM document_members WHERE id = ?
+            DELETE FROM documentMembers WHERE id = ?
           `,
           [id]
         );
