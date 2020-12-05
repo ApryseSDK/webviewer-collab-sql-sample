@@ -33,6 +33,8 @@ db.serialize(() => {
     }
   });
 });
+
+// Fetch data from database
 const getQueryResponse = (query, param) =>
   new Promise((resolve, reject) => {
     db.all(query, param, (err, rows) => {
@@ -99,17 +101,33 @@ const orderAndLimit = (query, filters) => {
   return newQuery;
 };
 
+// Change Documnet.isPulic type from Integer(1 or 0) to Boolean(true or false)
+const changeIsPublicType = documents => {
+  if (documents.length) {
+    const newDocs = documents.map(doc => {
+      doc.isPublic = doc.isPublic === 1;
+      return doc;
+    });
+    if (newDocs.length > 1) {
+      return newDocs;
+    }
+    return newDocs[0];
+  }
+  return [];
+};
+
 module.exports = {
   Query: {
     user: async id => {
-      const res = await getQueryResponse(`SELECT * FROM users WHERE id = ?`, [
-        id,
-      ]);
+      const res = await getQueryResponse(
+        `SELECT id, userName, email, type, createdAt, updatedAt FROM users WHERE id = ?`,
+        [id]
+      );
       return res[0] || null;
     },
     userWithEmail: async email => {
       const res = await getQueryResponse(
-        `SELECT * FROM users WHERE email = ?`,
+        `SELECT id, userName, email, type, createdAt, updatedAt FROM users WHERE email = ?`,
         [email]
       );
       return res[0] || null;
@@ -151,7 +169,7 @@ module.exports = {
       query = orderAndLimit(query, filters);
 
       const res = await getQueryResponse(query, []);
-      return res;
+      return changeIsPublicType(res);
     },
 
     annotationMembers: async ({ ids, annotationId, userId, filters = {} }) => {
@@ -203,7 +221,7 @@ module.exports = {
   },
   Mutation: {
     addUser: async user => {
-      const res = await getQueryResponse(
+      await getQueryResponse(
         `
           INSERT INTO users
           (id, type, email, userName, createdAt, updatedAt)
@@ -219,10 +237,14 @@ module.exports = {
           user.updatedAt,
         ]
       );
+      const res = await getQueryResponse(
+        `SELECT id, userName, email, type, createdAt, updatedAt FROM users WHERE id = ?`,
+        [user.id]
+      );
       return res[0] || null;
     },
-    addAnnotation: async user => {
-      const res = await getQueryResponse(
+    addAnnotation: async annotation => {
+      await getQueryResponse(
         `
           INSERT INTO annotations
           (id, xfdf, authorId, documentId, pageNumber, createdAt, updatedAt, inReplyTo)
@@ -230,20 +252,24 @@ module.exports = {
           (?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
-          user.id,
-          user.xfdf,
-          user.authorId,
-          user.documentId,
-          user.pageNumber,
-          user.createdAt,
-          user.updatedAt,
-          user.inReplyTo,
+          annotation.id,
+          annotation.xfdf,
+          annotation.authorId,
+          annotation.documentId,
+          annotation.pageNumber,
+          annotation.createdAt,
+          annotation.updatedAt,
+          annotation.inReplyTo,
         ]
+      );
+      const res = await getQueryResponse(
+        `SELECT * FROM annotations WHERE id = ?`,
+        [annotation.id]
       );
       return res[0] || null;
     },
     editAnnotation: async (id, editAnnotInput) => {
-      const editedAnnot = await getQueryResponse(
+      await getQueryResponse(
         `
           UPDATE annotations SET xfdf = ?, pageNumber = ?, updatedAt = ?
           WHERE id = ?
@@ -255,7 +281,11 @@ module.exports = {
           id,
         ]
       );
-      return editedAnnot;
+      const editedAnnot = await getQueryResponse(
+        `SELECT * FROM annotations WHERE id = ?`,
+        [id]
+      );
+      return editedAnnot[0] || null;
     },
     deleteAnnotation: async id => {
       try {
@@ -266,7 +296,7 @@ module.exports = {
       }
     },
     addDocument: async doc => {
-      const res = await getQueryResponse(
+      await getQueryResponse(
         `
           INSERT INTO documents
           (id, createdAt, updatedAt, authorId, isPublic, name)
@@ -282,11 +312,15 @@ module.exports = {
           doc.name,
         ]
       );
-      return res[0] || null;
+      const res = await getQueryResponse(
+        `SELECT * FROM documents WHERE id = ?`,
+        [doc.id]
+      );
+      return changeIsPublicType(res);
     },
 
     editDocument: async (id, editDocInput) => {
-      const res = await getQueryResponse(
+      await getQueryResponse(
         `
           UPDATE documents
           SET name = ?, isPublic = ?, updatedAt = ?
@@ -294,7 +328,11 @@ module.exports = {
         `,
         [editDocInput.name, editDocInput.isPublic, editDocInput.updatedAt, id]
       );
-      return res[0] || null;
+      const res = await getQueryResponse(
+        `SELECT * FROM documents WHERE id = ?`,
+        [id]
+      );
+      return changeIsPublicType(res);
     },
     deleteDocument: async id => {
       try {
@@ -310,7 +348,7 @@ module.exports = {
       }
     },
     addDocumentMember: async member => {
-      const res = await getQueryResponse(
+      await getQueryResponse(
         `
           INSERT INTO documentMembers
           (id, userId, documentId, lastRead, createdAt, updatedAt)
@@ -326,10 +364,14 @@ module.exports = {
           member.updatedAt,
         ]
       );
+      const res = await getQueryResponse(
+        `SELECT * FROM documentMembers WHERE id = ?`,
+        [member.id]
+      );
       return res[0] || null;
     },
     editDocumentMember: async (id, editMemberInput) => {
-      const editedMemer = await getQueryResponse(
+      await getQueryResponse(
         `
           UPDATE documentMembers
           SET lastRead = ?, updatedAt = ?
@@ -337,7 +379,11 @@ module.exports = {
         `,
         [editMemberInput.lastRead, editMemberInput.updatedAt, id]
       );
-      return editedMemer;
+      const editedMember = await getQueryResponse(
+        `SELECT * FROM documentMembers WHERE id = ?`,
+        [id]
+      );
+      return editedMember[0] || null;
     },
     deleteDocumentMember: async id => {
       try {
@@ -353,7 +399,7 @@ module.exports = {
       }
     },
     addAnnotationMember: async member => {
-      const res = await getQueryResponse(
+      await getQueryResponse(
         `
           INSERT INTO annotationMembers
           (id, documentId, lastRead, annotationId, userId, createdAt, updatedAt, annotationCreatedAt)
@@ -371,10 +417,14 @@ module.exports = {
           member.annotationCreatedAt,
         ]
       );
+      const res = await getQueryResponse(
+        `SELECT * FROM annotationMembers WHERE id = ?`,
+        [member.id]
+      );
       return res[0] || null;
     },
     editAnnotationMember: async (id, editMemberInput) => {
-      const editedMemer = await getQueryResponse(
+      await getQueryResponse(
         `
           UPDATE annotationMembers
           SET lastRead = ?, updatedAt = ?
@@ -382,7 +432,11 @@ module.exports = {
         `,
         [editMemberInput.lastRead, editMemberInput.updatedAt, id]
       );
-      return editedMemer;
+      const editedMember = await getQueryResponse(
+        `SELECT * FROM annotationMembers WHERE id = ?`,
+        [id]
+      );
+      return editedMember[0] || null;
     },
     deleteAnnotationMember: async id => {
       try {
@@ -396,3 +450,5 @@ module.exports = {
     },
   },
 };
+
+module.exports.db = db;
