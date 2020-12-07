@@ -102,19 +102,11 @@ const orderAndLimit = (query, filters) => {
 };
 
 // Change Documnet.isPulic type from Integer(1 or 0) to Boolean(true or false)
-const changeIsPublicType = documents => {
-  if (documents.length) {
-    const newDocs = documents.map(doc => {
-      doc.isPublic = doc.isPublic === 1;
-      return doc;
-    });
-    if (newDocs.length > 1) {
-      return newDocs;
-    }
-    return newDocs[0];
-  }
-  return [];
-};
+const changeIsPublicType = documents =>
+  documents.map(doc => {
+    doc.isPublic = doc.isPublic === 1;
+    return doc;
+  });
 
 module.exports = {
   Query: {
@@ -316,7 +308,8 @@ module.exports = {
         `SELECT * FROM documents WHERE id = ?`,
         [doc.id]
       );
-      return changeIsPublicType(res);
+      const finalDoc = changeIsPublicType(res);
+      return finalDoc[0] || null;
     },
 
     editDocument: async (id, editDocInput) => {
@@ -332,7 +325,8 @@ module.exports = {
         `SELECT * FROM documents WHERE id = ?`,
         [id]
       );
-      return changeIsPublicType(res);
+      const finalDoc = changeIsPublicType(res);
+      return finalDoc[0] || null;
     },
     deleteDocument: async id => {
       try {
