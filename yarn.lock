@@ -945,10 +945,10 @@
     "@parcel/utils" "^1.11.0"
     physical-cpu-count "^2.0.0"
 
-"@pdftron/webviewer@^7.1.2":
-  version "7.1.2"
-  resolved "https://registry.yarnpkg.com/@pdftron/webviewer/-/webviewer-7.1.2.tgz#ad675d5f3b02de8cfa947ea1e8013db4c4cd0fd9"
-  integrity sha512-w170I8+FFOR3ue1Gpi6Dba4xpTJ/ccV+FGghNoHvXOXhyPMr2tRKSvlxIQPMCyIqYY3BfKSh+SMtcRElqNgT7Q==
+"@pdftron/webviewer@^7.2.0":
+  version "7.2.0"
+  resolved "https://registry.yarnpkg.com/@pdftron/webviewer/-/webviewer-7.2.0.tgz#2e81f09cc5c58fa4f4ac231821b7512d5efd4879"
+  integrity sha512-Nh2O1Gb/H02q3VMwIJQMZNpfBHQ7Te/Cnpz+bu9Pyn9cibHboSZIZ2PJAeYzrzR1P70JWORrAHFL6AvH0JrDoA==
 
 "@sindresorhus/is@^0.14.0":
   version "0.14.0"
