@@ -11,7 +11,7 @@
   "dependencies": {
     "@pdftron/collab-client": "^0.1.1",
     "@pdftron/collab-server": "^0.1.4",
-    "@pdftron/webviewer": "^7.1.2",
+    "@pdftron/webviewer": "^7.2.0",
     "dotenv": "^8.2.0",
     "parcel": "^1.12.4",
     "sqlite3": "^4.0.6",
