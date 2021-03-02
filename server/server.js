@@ -10,9 +10,22 @@ const corsOption = {
   credentials: true,
 };
 
+const permissions = {
+  [CollabServer.Permissions.Entities.DOCUMENT]: {
+    [CollabServer.Permissions.Actions.READ]: CollabServer.Permissions.Roles.ANY,
+    [CollabServer.Permissions.Actions.ADD]: CollabServer.Permissions.Roles.ANY,
+    [CollabServer.Permissions.Actions.EDIT]: CollabServer.Permissions.Roles.ANY
+  },
+  [CollabServer.Permissions.Entities.ANNOTATION]: {
+    [CollabServer.Permissions.Actions.READ]: CollabServer.Permissions.Roles.ANY,
+    [CollabServer.Permissions.Actions.ADD]: CollabServer.Permissions.Roles.ANY
+  }
+};
+
 const server = new CollabServer({
   resolvers,
   corsOption,
+  permissions,
   logLevel: CollabServer.LogLevels.DEBUG,
 });
 
