@@ -53,3 +53,16 @@ CREATE TABLE IF NOT EXISTS documentMembers (
   FOREIGN KEY (userId) REFERENCES users (id)
   FOREIGN KEY (documentId) REFERENCES documents (id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS mentions (
+  id TEXT NOT NULL PRIMARY KEY,
+  userId TEXT,
+  documentId TEXT NOT NULL,
+  annotationId TEXT NOT NULL,
+  createdAt INTEGER,
+  updatedAt INTEGER,
+  readBeforeMention BOOLEAN,
+  FOREIGN KEY (userId) REFERENCES users (id)
+  FOREIGN KEY (documentId) REFERENCES documents (id) ON DELETE CASCADE
+  FOREIGN KEY (annotationId) REFERENCES annotations (id) ON DELETE CASCADE
+);

@@ -9,6 +9,7 @@ const client = new CollabClient({
   url,
   subscriptionUrl,
 });
+const documentId = 'abcdefgh';
 
 WebViewer(
   {
@@ -21,9 +22,12 @@ WebViewer(
     client.loadDocument(
       'https://pdftron.s3.amazonaws.com/downloads/pl/demo-annotated.pdf',
       {
-        documentId: 'abcde',
+        documentId,
         filename: 'demo-annotated.pdf',
+        isPublic: true,
       }
     );
+  }).then((res) => {
+    client.joinDocument(documentId);
   });
 });

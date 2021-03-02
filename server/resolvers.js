@@ -194,6 +194,23 @@ module.exports = {
       const res = await getQueryResponse(query, []);
       return res;
     },
+    mentions: async ({ ids, annotationId, userId, documentId, filters = {} }) => {
+      let query = 'SELECT * FROM mentions';
+
+      query += ` ${getWhereClause([
+        documentId && `documentId = '${documentId}'`,
+        annotationId && `annotationId = '${annotationId}'`,
+        userId && `userId = '${userId}'`,
+        ids && ids.length && valueIn('id', ids),
+        ...getFilterQuery(filters),
+      ])}`;
+
+      query = orderAndLimit(query, filters);
+
+      const res = await getQueryResponse(query, []);
+      return res;
+
+    },
     annotationCount: async ({ documentId, since }) => {
       const resp = await getQueryResponse(
         `SELECT COUNT(id) FROM annotations WHERE documentId = ? AND createdAt > ?`,
@@ -435,6 +452,54 @@ module.exports = {
     deleteAnnotationMember: async id => {
       try {
         await getQueryResponse(`DELETE FROM annotationMembers WHERE id = ?`, [
+          id,
+        ]);
+        return { successful: true };
+      } catch (error) {
+        return { successful: false };
+      }
+    },
+    addMention: async mention => {
+      await getQueryResponse(
+        `
+          INSERT INTO mentions
+          (id, userId, documentId, annotationId, createdAt, updatedAt)
+          VALUES
+          (?, ?, ?, ?, ?, ?)
+        `,
+        [
+          mention.id,
+          mention.userId,
+          mention.documentId,
+          mention.annotationId,
+          mention.createdAt,
+          mention.updatedAt,
+        ]
+      );
+      const res = await getQueryResponse(
+        `SELECT * FROM mentions WHERE id = ?`,
+        [mention.id]
+      );
+      return res[0] || null;
+    },
+    editMention: async (id, editMentionInput) => {
+      await getQueryResponse(
+        `
+          UPDATE mentions
+          SET readBeforeMention = ?, updatedAt = ?
+          WHERE id = ?
+        `,
+        [editMentionInput.readBeforeMention, editMentionInput.updatedAt, id]
+      );
+      const editedMention = await getQueryResponse(
+        `SELECT * FROM mentions WHERE id = ?`,
+        [id]
+      );
+      return editedMention[0] || null;
+    },
+    deleteMention: async id => {
+      try {
+        await getQueryResponse(`DELETE FROM mentions WHERE id = ?`, [
           id,
         ]);
         return { successful: true };
