@@ -35,7 +35,7 @@ npm run start-client
 
 ## How to use
 
-- Open browser window in incognito mode and go to [port 3000](http://localhost:3000/index.html)
+- Open browser window in incognito mode and go to [port 8000](http://localhost:8000/index.html)
 - Create annotations with annotations tools in the header
 - See the changes being applied in real time in other windows
 - You can access the real time server from a different device in the same network via replacing `localhost` in your URL to the server's IP address.
