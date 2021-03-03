@@ -11,7 +11,7 @@ const client = new CollabClient({
   url,
   subscriptionUrl,
 });
-const documentId = 'abcdefgh';
+const documentId = 'abcde';
 
 WebViewer(
   {
@@ -29,7 +29,7 @@ WebViewer(
         isPublic: true,
       }
     );
-  }).then((res) => {
+  }).then(() => {
     client.joinDocument(documentId);
   });
 });
