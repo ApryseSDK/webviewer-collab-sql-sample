@@ -1,5 +1,4 @@
 CREATE TABLE IF NOT EXISTS users (
-  id TEXT NOT NULL PRIMARY KEY,
   userName TEXT,
   email TEXT,
   password TEXT,
@@ -10,7 +9,6 @@ CREATE TABLE IF NOT EXISTS users (
   updatedAt INTEGER
 );
 CREATE TABLE IF NOT EXISTS documents (
-  id TEXT NOT NULL PRIMARY KEY,
   name TEXT,
   authorId TEXT NOT NULL,
   isPublic INTEGER NOT NULL,
@@ -19,9 +17,10 @@ CREATE TABLE IF NOT EXISTS documents (
   FOREIGN KEY (authorId) REFERENCES users (id)
 );
 CREATE TABLE IF NOT EXISTS annotations (
-  id TEXT NOT NULL PRIMARY KEY,
   xfdf TEXT,
+  annotContents TEXT,
   authorId TEXT,
+  annotationId TEXT,
   documentId TEXT,
   pageNumber INTEGER NOT NULL,
   createdAt INTEGER,
@@ -31,7 +30,6 @@ CREATE TABLE IF NOT EXISTS annotations (
   FOREIGN KEY (documentId) REFERENCES documents (id) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS annotationMembers (
-  id TEXT NOT NULL PRIMARY KEY,
   userId TEXT,
   documentId TEXT NOT NULL,
   annotationId TEXT NOT NULL,
@@ -44,7 +42,6 @@ CREATE TABLE IF NOT EXISTS annotationMembers (
   FOREIGN KEY (annotationId) REFERENCES annotations (id) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS documentMembers (
-  id TEXT NOT NULL PRIMARY KEY,
   userId TEXT,
   documentId TEXT NOT NULL,
   lastRead INTEGER NOT NULL,
@@ -55,7 +52,6 @@ CREATE TABLE IF NOT EXISTS documentMembers (
 );
 
 CREATE TABLE IF NOT EXISTS mentions (
-  id TEXT NOT NULL PRIMARY KEY,
   userId TEXT,
   documentId TEXT NOT NULL,
   annotationId TEXT NOT NULL,
