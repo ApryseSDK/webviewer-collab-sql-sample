@@ -1,5 +1,6 @@
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
+const SQLResolverGenerator = require('@pdftron/collab-sql-resolver-generator');
 
 // Read query file
 const initDatabaseQuery = fs
@@ -34,480 +35,95 @@ db.serialize(() => {
   });
 });
 
-// Fetch data from database
-const getQueryResponse = (query, param) =>
-  new Promise((resolve, reject) => {
-    db.all(query, param, (err, rows) => {
-      if (err) {
-        console.error(`query: ${query}, param ${param}`);
-        console.error(err);
-        reject(err);
+const sqlResolverGeneratorOptions = {
+  client: 'sqlite3',
+  connection: {
+    filename: './server/collab.db',
+  },
+  logLevel: 'debug',
+  getDatabaseTimestamp: (timestamp) => {
+    return new Date(timestamp).toISOString()
+  },
+  parseToUnixTimestamp: (timestamp) => new Date(timestamp).getTime(),
+  info: {
+    Users: {
+      table: 'users',
+      columns: {
+        id: { name: 'rowid', transform: (id) => `${id}`},
+        userName: 'userName',
+        email: 'email',
+        type: { name: 'type' },
+        createdAt: { name: 'createdAt' },
+        updatedAt: { name: 'updatedAt' }
       }
-      resolve(rows);
-    });
-  });
-
-/**
- * A utility function to merge multiple WHERE clauses together
- */
-const getWhereClause = clauses => {
-  // remove empty clauses
-  const filtered = clauses.filter(c => !!c);
-
-  return filtered
-    .reduce((acc, clause, index) => {
-      const isLast = index === filtered.length - 1;
-      return `${acc}${clause} ${isLast ? '' : 'AND '}`;
-    }, 'WHERE ')
-    .trim();
-};
-
-/**
- * A utility function to convert an array of items into an IN clause
- */
-const valueIn = (value, options) =>
-  `${value} IN (${options.reduce((acc, item, index) => {
-    const isLast = index === options.length - 1;
-    const suffix = isLast ? '' : ',';
-
-    if (typeof item === 'string') {
-      return `${acc}'${item}'${suffix}`;
+    },
+    Annotations: {
+      table: 'annotations',
+      columns: {
+        id: { name: 'rowid', transform: (id) => `${id}` },
+        xfdf: { name: 'xfdf' },
+        annotContents: { name: 'annotContents' },
+        authorId: { name: 'authorId' },
+        annotationId: { name: 'annotationId' },
+        documentId: { name: 'documentId' },
+        pageNumber: { name: 'pageNumber' },
+        createdAt: { name: 'createdAt' },
+        updatedAt: { name: 'updatedAt' },
+        inReplyTo: { name: 'inReplyTo' }
+      }
+    },
+    Documents: {
+      table: 'documents',
+      columns: {
+        id: { name: 'rowid', transform: (id) => `${id}` },
+        authorId: { name: 'authorId' },
+        isPublic: { name: 'isPublic' },
+        name: { name: 'name' },
+        createdAt: { name: 'createdAt' },
+        updatedAt: { name: 'updatedAt' }
+      }
+    },
+    AnnotationMembers: {
+      table: 'annotationMembers',
+      columns: {
+        id: { name: 'rowid', transform: (id) => `${id}` },
+        userId: { name: 'userId' },
+        documentId: { name: 'documentId' },
+        annotationId: { name: 'annotationId' },
+        lastRead: { name: 'lastRead' },
+        createdAt: { name: 'createdAt' },
+        updatedAt: { name: 'updatedAt' },
+        annotationCreatedAt: { name: 'annotationCreatedAt' }
+      }
+    },
+    DocumentMembers: {
+      table: 'documentMembers',
+      columns: {
+        id: { name: 'rowid', transform: (id) => `${id}` },
+        userId: { name: 'userId' },
+        documentId: { name: 'documentId' },
+        lastRead: { name: 'lastRead' },
+        createdAt: { name: 'createdAt' },
+        updatedAt: { name: 'updatedAt' }
+      }
+    },
+    Mentions: {
+      table: 'mentions',
+      columns: {
+        id: { name: 'rowid', transform: (id) => `${id}` },
+        userId: { name: 'userId' },
+        documentId: { name: 'documentId' },
+        annotationId: { name: 'annotationId' },
+        readBeforeMention: { name: 'readBeforeMention' },
+        createdAt: { name: 'createdAt' },
+        updatedAt: { name: 'updatedAt' }
+      }
     }
-
-    return `${acc}${item}${suffix}`;
-  }, '')})`;
-
-/**
- * A utility that converts a filter object to a set of WHERE clauses
- */
-const getFilterQuery = filters => [
-  filters.createdBefore && `createdAt < ${filters.createdBefore}`,
-  filters.createdAfter && `createdAt > ${filters.createdAfter}`,
-  filters.updatedBefore && `updatedAt < ${filters.updatedBefore}`,
-  filters.updatedAfter && `updatedAt > ${filters.updatedAfter}`,
-];
-
-const orderAndLimit = (query, filters) => {
-  const { orderBy, orderDirection, limit } = filters;
-  let newQuery = query;
-  if (orderBy) {
-    newQuery += ` ORDER BY ${orderBy} ${orderDirection}`;
   }
-
-  if (limit) {
-    newQuery += ` LIMIT ${limit}`;
-  }
-
-  return newQuery;
 };
 
-// Change Documnet.isPulic type from Integer(1 or 0) to Boolean(true or false)
-const changeIsPublicType = documents =>
-  documents.map(doc => {
-    doc.isPublic = doc.isPublic === 1;
-    return doc;
-  });
+const resolvers = SQLResolverGenerator(sqlResolverGeneratorOptions);
 
-module.exports = {
-  Query: {
-    user: async id => {
-      const res = await getQueryResponse(
-        `SELECT id, userName, email, type, createdAt, updatedAt FROM users WHERE id = ?`,
-        [id]
-      );
-      return res[0] || null;
-    },
-    userWithEmail: async email => {
-      const res = await getQueryResponse(
-        `SELECT id, userName, email, type, createdAt, updatedAt FROM users WHERE email = ?`,
-        [email]
-      );
-      return res[0] || null;
-    },
-
-    annotations: async ({
-      ids,
-      documentId,
-      pageNumbers,
-      inReplyTo,
-      filters = {},
-    }) => {
-      let query = 'SELECT * FROM annotations';
-
-      query += ` ${getWhereClause([
-        documentId && `documentId = '${documentId}'`,
-        inReplyTo && `inReplyTo = '${inReplyTo}'`,
-        ids && ids.length && valueIn('id', ids),
-        pageNumbers && pageNumbers.length && valueIn('pageNumber', pageNumbers),
-        ...getFilterQuery(filters),
-      ])}`;
-
-      query = orderAndLimit(query, filters);
-
-      const res = await getQueryResponse(query, []);
-      return res;
-    },
-
-    documents: async ({ ids, userId, filters = {} }) => {
-      let query = 'SELECT * FROM documents';
-
-      query += ` ${getWhereClause([
-        userId &&
-          `id in (SELECT documentId FROM documentMembers WHERE userId = '${userId}')`,
-        ids && ids.length && valueIn('id', ids),
-        ...getFilterQuery(filters),
-      ])}`;
-
-      query = orderAndLimit(query, filters);
-
-      const res = await getQueryResponse(query, []);
-      return changeIsPublicType(res);
-    },
-
-    annotationMembers: async ({ ids, annotationId, userId, filters = {} }) => {
-      let query = 'SELECT * FROM annotationMembers';
-
-      query += ` ${getWhereClause([
-        annotationId && `annotationId = '${annotationId}'`,
-        userId && `userId = '${userId}'`,
-        ids && ids.length && valueIn('id', ids),
-        ...getFilterQuery(filters),
-      ])}`;
-
-      query = orderAndLimit(query, filters);
-
-      const res = await getQueryResponse(query, []);
-      return res;
-    },
-    documentMembers: async ({ ids, documentId, userId, filters = {} }) => {
-      let query = 'SELECT * FROM documentMembers';
-
-      query += ` ${getWhereClause([
-        documentId && `documentId = '${documentId}'`,
-        userId && `userId = '${userId}'`,
-        ids && ids.length && valueIn('id', ids),
-        ...getFilterQuery(filters),
-      ])}`;
-
-      query = orderAndLimit(query, filters);
-
-      const res = await getQueryResponse(query, []);
-      return res;
-    },
-    mentions: async ({ ids, annotationId, userId, documentId, filters = {} }) => {
-      let query = 'SELECT * FROM mentions';
-
-      query += ` ${getWhereClause([
-        documentId && `documentId = '${documentId}'`,
-        annotationId && `annotationId = '${annotationId}'`,
-        userId && `userId = '${userId}'`,
-        ids && ids.length && valueIn('id', ids),
-        ...getFilterQuery(filters),
-      ])}`;
-
-      query = orderAndLimit(query, filters);
-
-      const res = await getQueryResponse(query, []);
-      return res;
-
-    },
-    annotationCount: async ({ documentId, since }) => {
-      const resp = await getQueryResponse(
-        `SELECT COUNT(id) FROM annotations WHERE documentId = ? AND createdAt > ?`,
-        [documentId, since]
-      );
-
-      return resp[0]['COUNT(id)'];
-    },
-    annotationMemberCount: async ({ userId, documentId, since }) => {
-      const resp = await getQueryResponse(
-        `SELECT COUNT(id) FROM annotationMembers WHERE documentId = ? AND userId = ? AND annotationCreatedAt > ?`,
-        [documentId, userId, since]
-      );
-
-      return resp[0]['COUNT(id)'];
-    },
-  },
-  Mutation: {
-    addUser: async user => {
-      await getQueryResponse(
-        `
-          INSERT INTO users
-          (id, type, email, userName, createdAt, updatedAt)
-          VALUES
-          (?, ?, ?, ?, ?, ?)
-        `,
-        [
-          user.id,
-          user.type,
-          user.email,
-          user.userName,
-          user.createdAt,
-          user.updatedAt,
-        ]
-      );
-      const res = await getQueryResponse(
-        `SELECT id, userName, email, type, createdAt, updatedAt FROM users WHERE id = ?`,
-        [user.id]
-      );
-      return res[0] || null;
-    },
-    addAnnotation: async annotation => {
-      await getQueryResponse(
-        `
-          INSERT INTO annotations
-          (id, xfdf, authorId, documentId, pageNumber, createdAt, updatedAt, inReplyTo)
-          VALUES
-          (?, ?, ?, ?, ?, ?, ?, ?)
-        `,
-        [
-          annotation.id,
-          annotation.xfdf,
-          annotation.authorId,
-          annotation.documentId,
-          annotation.pageNumber,
-          annotation.createdAt,
-          annotation.updatedAt,
-          annotation.inReplyTo,
-        ]
-      );
-      const res = await getQueryResponse(
-        `SELECT * FROM annotations WHERE id = ?`,
-        [annotation.id]
-      );
-      return res[0] || null;
-    },
-    editAnnotation: async (id, editAnnotInput) => {
-      await getQueryResponse(
-        `
-          UPDATE annotations SET xfdf = ?, pageNumber = ?, updatedAt = ?
-          WHERE id = ?
-        `,
-        [
-          editAnnotInput.xfdf,
-          editAnnotInput.pageNumber,
-          editAnnotInput.updatedAt,
-          id,
-        ]
-      );
-      const editedAnnot = await getQueryResponse(
-        `SELECT * FROM annotations WHERE id = ?`,
-        [id]
-      );
-      return editedAnnot[0] || null;
-    },
-    deleteAnnotation: async id => {
-      try {
-        await getQueryResponse(`DELETE FROM annotations WHERE id = ?`, [id]);
-        return { successful: true };
-      } catch (error) {
-        return { successful: false };
-      }
-    },
-    addDocument: async doc => {
-      await getQueryResponse(
-        `
-          INSERT INTO documents
-          (id, createdAt, updatedAt, authorId, isPublic, name)
-          VALUES
-          (?, ?, ?, ?, ?, ?)
-        `,
-        [
-          doc.id,
-          doc.createdAt,
-          doc.updatedAt,
-          doc.authorId,
-          doc.isPublic,
-          doc.name,
-        ]
-      );
-      const res = await getQueryResponse(
-        `SELECT * FROM documents WHERE id = ?`,
-        [doc.id]
-      );
-      const finalDoc = changeIsPublicType(res);
-      return finalDoc[0] || null;
-    },
-
-    editDocument: async (id, editDocInput) => {
-      await getQueryResponse(
-        `
-          UPDATE documents
-          SET name = ?, isPublic = ?, updatedAt = ?
-          WHERE id = ?
-        `,
-        [editDocInput.name, editDocInput.isPublic, editDocInput.updatedAt, id]
-      );
-      const res = await getQueryResponse(
-        `SELECT * FROM documents WHERE id = ?`,
-        [id]
-      );
-      const finalDoc = changeIsPublicType(res);
-      return finalDoc[0] || null;
-    },
-    deleteDocument: async id => {
-      try {
-        await getQueryResponse(
-          `
-            DELETE FROM documents WHERE id = ?
-          `,
-          [id]
-        );
-        return { successful: true };
-      } catch (error) {
-        return { successful: false };
-      }
-    },
-    addDocumentMember: async member => {
-      await getQueryResponse(
-        `
-          INSERT INTO documentMembers
-          (id, userId, documentId, lastRead, createdAt, updatedAt)
-          VALUES
-          (?, ?, ?, ?, ?, ?)
-        `,
-        [
-          member.id,
-          member.userId,
-          member.documentId,
-          member.lastRead,
-          member.createdAt,
-          member.updatedAt,
-        ]
-      );
-      const res = await getQueryResponse(
-        `SELECT * FROM documentMembers WHERE id = ?`,
-        [member.id]
-      );
-      return res[0] || null;
-    },
-    editDocumentMember: async (id, editMemberInput) => {
-      await getQueryResponse(
-        `
-          UPDATE documentMembers
-          SET lastRead = ?, updatedAt = ?
-          WHERE id = ?
-        `,
-        [editMemberInput.lastRead, editMemberInput.updatedAt, id]
-      );
-      const editedMember = await getQueryResponse(
-        `SELECT * FROM documentMembers WHERE id = ?`,
-        [id]
-      );
-      return editedMember[0] || null;
-    },
-    deleteDocumentMember: async id => {
-      try {
-        await getQueryResponse(
-          `
-            DELETE FROM documentMembers WHERE id = ?
-          `,
-          [id]
-        );
-        return { successful: true };
-      } catch (error) {
-        return { successful: false };
-      }
-    },
-    addAnnotationMember: async member => {
-      await getQueryResponse(
-        `
-          INSERT INTO annotationMembers
-          (id, documentId, lastRead, annotationId, userId, createdAt, updatedAt, annotationCreatedAt)
-          VALUES
-          (?, ?, ?, ?, ?, ?, ?, ?)
-        `,
-        [
-          member.id,
-          member.documentId,
-          member.lastRead,
-          member.annotationId,
-          member.userId,
-          member.createdAt,
-          member.updatedAt,
-          member.annotationCreatedAt,
-        ]
-      );
-      const res = await getQueryResponse(
-        `SELECT * FROM annotationMembers WHERE id = ?`,
-        [member.id]
-      );
-      return res[0] || null;
-    },
-    editAnnotationMember: async (id, editMemberInput) => {
-      await getQueryResponse(
-        `
-          UPDATE annotationMembers
-          SET lastRead = ?, updatedAt = ?
-          WHERE id = ?
-        `,
-        [editMemberInput.lastRead, editMemberInput.updatedAt, id]
-      );
-      const editedMember = await getQueryResponse(
-        `SELECT * FROM annotationMembers WHERE id = ?`,
-        [id]
-      );
-      return editedMember[0] || null;
-    },
-    deleteAnnotationMember: async id => {
-      try {
-        await getQueryResponse(`DELETE FROM annotationMembers WHERE id = ?`, [
-          id,
-        ]);
-        return { successful: true };
-      } catch (error) {
-        return { successful: false };
-      }
-    },
-    addMention: async mention => {
-      await getQueryResponse(
-        `
-          INSERT INTO mentions
-          (id, userId, documentId, annotationId, createdAt, updatedAt)
-          VALUES
-          (?, ?, ?, ?, ?, ?)
-        `,
-        [
-          mention.id,
-          mention.userId,
-          mention.documentId,
-          mention.annotationId,
-          mention.createdAt,
-          mention.updatedAt,
-        ]
-      );
-      const res = await getQueryResponse(
-        `SELECT * FROM mentions WHERE id = ?`,
-        [mention.id]
-      );
-      return res[0] || null;
-    },
-    editMention: async (id, editMentionInput) => {
-      await getQueryResponse(
-        `
-          UPDATE mentions
-          SET readBeforeMention = ?, updatedAt = ?
-          WHERE id = ?
-        `,
-        [editMentionInput.readBeforeMention, editMentionInput.updatedAt, id]
-      );
-      const editedMention = await getQueryResponse(
-        `SELECT * FROM mentions WHERE id = ?`,
-        [id]
-      );
-      return editedMention[0] || null;
-    },
-    deleteMention: async id => {
-      try {
-        await getQueryResponse(`DELETE FROM mentions WHERE id = ?`, [
-          id,
-        ]);
-        return { successful: true };
-      } catch (error) {
-        return { successful: false };
-      }
-    },
-  },
-};
+module.exports = { ...resolvers };
 
 module.exports.db = db;
