@@ -6,30 +6,31 @@ const url = `http://localhost:3000`;
 const subscriptionUrl = `ws://localhost:3000/subscribe`;
 const viewerElement = document.getElementById('viewer');
 const currentUser = faker.name.firstName();
-
-const client = new CollabClient({
-  url,
-  subscriptionUrl,
-});
-const documentId = 'abcde';
+let documentId = '1';
 
 WebViewer(
   {
-    path: '/public/webviewer',
+    path: '/public/webviewer'
   },
   viewerElement
-).then(instance => {
-  client.setInstance(instance);
-  client.loginAnonymously(currentUser).then(() => {
-    client.loadDocument(
-      'https://pdftron.s3.amazonaws.com/downloads/pl/demo-annotated.pdf',
-      {
-        documentId,
-        filename: 'demo-annotated.pdf',
-        isPublic: true,
-      }
-    );
-  }).then(() => {
-    client.joinDocument(documentId);
+).then(async (instance) => {
+  const client = new CollabClient({
+    instance,
+    url,
+    subscriptionUrl
   });
+  await client.loginAnonymously(currentUser);
+  await client.loadDocument('https://pdftron.s3.amazonaws.com/downloads/pl/demo-annotated.pdf', {
+    documentId,
+    filename: 'demo-annotated.pdf',
+    isPublic: true
+  });
+  try {
+    const canJoinDocument = await client.canJoinDocument(documentId);
+    if (canJoinDocument) {
+      await client.joinDocument(documentId);
+    }
+  } catch (error) {
+    console.error(error);
+  }
 });
