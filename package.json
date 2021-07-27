@@ -12,7 +12,7 @@
     "@pdftron/collab-client": "^2.0.0-alpha.3",
     "@pdftron/collab-server": "^2.0.0-alpha.3",
     "@pdftron/collab-sql-resolver-generator": "^2.0.0-alpha.3",
-    "@pdftron/webviewer": "^7.3.0",
+    "@pdftron/webviewer": "^8.0.0",
     "dotenv": "^8.2.0",
     "faker": "^5.4.0",
     "parcel": "^1.12.4",
