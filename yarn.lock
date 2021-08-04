@@ -1233,10 +1233,10 @@
     "@parcel/utils" "^1.11.0"
     physical-cpu-count "^2.0.0"
 
-"@pdftron/collab-client@^2.0.0-alpha.3":
-  version "2.0.0-alpha.3"
-  resolved "https://registry.yarnpkg.com/@pdftron/collab-client/-/collab-client-2.0.0-alpha.3.tgz#b68457396740b834e32bbbaab90a4363c75613cb"
-  integrity sha512-x/Kcd5340OHTsEGUKW41TU2nwR6/nG6YVLXHggSxefQTHRmLKtRnc+O2cXYD6Gjjxi26hlasB6Xeuk5ikDHmoQ==
+"@pdftron/collab-client@^2.0.0-alpha.4":
+  version "2.0.0-alpha.4"
+  resolved "https://registry.yarnpkg.com/@pdftron/collab-client/-/collab-client-2.0.0-alpha.4.tgz#aaf59f01075cd1d317206c1e594a4665a077475f"
+  integrity sha512-C6KFX+nxXA8y4QTelVqGlWdaTL99gzy2BmUPXey7d3GSG9E4OXoSPgss6RsHYVK5xR7rFUyZSlpbRVSj/G6xCw==
   dependencies:
     apollo-boost "^0.4.9"
     apollo-link-context "^1.0.20"
@@ -1245,10 +1245,10 @@
     lodash "^4.17.20"
     subscriptions-transport-ws "^0.9.16"
 
-"@pdftron/collab-server@^2.0.0-alpha.3":
-  version "2.0.0-alpha.3"
-  resolved "https://registry.yarnpkg.com/@pdftron/collab-server/-/collab-server-2.0.0-alpha.3.tgz#9a225f4e71c3aceeff5b3d9eff0da2d7c6d5cef0"
-  integrity sha512-aG7IssxJLw3bwWA5hh5gBvY0q1FFtN9qjoeX/x97Kf8sGZeuZafPX3DlOBGFhM/2DAM8Xg69iQU4ipoCxM2oMw==
+"@pdftron/collab-server@^2.0.0-alpha.4":
+  version "2.0.0-alpha.4"
+  resolved "https://registry.yarnpkg.com/@pdftron/collab-server/-/collab-server-2.0.0-alpha.4.tgz#61613d6052fa456ffbdd047637350ad16a41ef14"
+  integrity sha512-S2aCkZU4V9AweysoxNPyemiw9TfUB+Z5JISyauXV4aXws+JfXAul/+VX27SHcWKbYav8uC0KAuitg8zY1tsXyw==
   dependencies:
     "@types/cookie" "^0.4.0"
     apollo-server "^2.14.1"
@@ -1260,10 +1260,10 @@
     pg "^8.3.0"
     ts-node "^9.0.0"
 
-"@pdftron/collab-sql-resolver-generator@^2.0.0-alpha.3":
-  version "2.0.0-alpha.3"
-  resolved "https://registry.yarnpkg.com/@pdftron/collab-sql-resolver-generator/-/collab-sql-resolver-generator-2.0.0-alpha.3.tgz#50b50e9dca77bcfa4267b542198d44bc721ae704"
-  integrity sha512-XoRDxrz36/BhsuORQaitZ6fZ943JMQuxwZd3dsHjxs3OvnPGJmOzdySqUJlFpbId0lSC/Ga+JSf68twigtGM1Q==
+"@pdftron/collab-sql-resolver-generator@^2.0.0-alpha.4":
+  version "2.0.0-alpha.4"
+  resolved "https://registry.yarnpkg.com/@pdftron/collab-sql-resolver-generator/-/collab-sql-resolver-generator-2.0.0-alpha.4.tgz#66c12a7cca2d30fb9913678b18c573a4e4177afa"
+  integrity sha512-HyZPtn1FPt0VGZxJtpCEs3DKhg7i0jwQetItJlcMajsVmyBOapnQ8Y4kTDEVNYL3Cns1laybwXDGfZ7DTyzJ0Q==
   dependencies:
     joi "^17.4.0"
     knex "^0.95.5"
