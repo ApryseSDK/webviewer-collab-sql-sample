@@ -57,7 +57,6 @@ CREATE TABLE IF NOT EXISTS mentions (
   annotationId TEXT NOT NULL,
   createdAt INTEGER,
   updatedAt INTEGER,
-  readBeforeMention BOOLEAN,
   FOREIGN KEY (userId) REFERENCES users (id)
   FOREIGN KEY (documentId) REFERENCES documents (id) ON DELETE CASCADE
   FOREIGN KEY (annotationId) REFERENCES annotations (id) ON DELETE CASCADE
