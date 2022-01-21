@@ -11,7 +11,13 @@ The bulk of the work is setting up the [resolvers](server/resolvers.js) to talk 
 
 ## Initial setup
 
+### Install Node
+
 Before you begin, make sure your development environment includes [Node.js](https://nodejs.org/en/).
+
+### Set up environment variables
+
+The Collab Server requires that a `COLLAB_KEY` environment is set. To do so, make a copy of `.env.example` and rename it to `.env`.
 
 ## Install
 
