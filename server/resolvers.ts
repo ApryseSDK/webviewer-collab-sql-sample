@@ -13,7 +13,7 @@ export default SQLResolverGenerator({
     Users: {
       table: "users",
       columns: {
-        id: { name: "rowid", transform: (id) => `${id}` },
+        id: { name: "rowid" },
         userName: "userName",
         email: "email",
         type: { name: "type" },
@@ -24,7 +24,7 @@ export default SQLResolverGenerator({
     Annotations: {
       table: "annotations",
       columns: {
-        id: { name: "rowid", transform: (id) => `${id}` },
+        id: { name: "rowid" },
         xfdf: { name: "xfdf" },
         annotContents: { name: "annotContents" },
         authorId: { name: "authorId" },
@@ -38,10 +38,14 @@ export default SQLResolverGenerator({
     },
     Documents: {
       table: "documents",
+      readMiddleware: [({ data, next, ctx }) => {
+        data.isPublic = !!data.isPublic;
+        next(data, ctx)
+      }],
       columns: {
-        id: { name: "rowid", transform: (id) => `${id}` },
+        id: { name: "rowid" },
         authorId: { name: "authorId" },
-        isPublic: { name: "isPublic", transform: (v) => !!v },
+        isPublic: { name: "isPublic" },
         name: { name: "name" },
         createdAt: { name: "createdAt" },
         updatedAt: { name: "updatedAt" },
@@ -50,7 +54,7 @@ export default SQLResolverGenerator({
     AnnotationMembers: {
       table: "annotationMembers",
       columns: {
-        id: { name: "rowid", transform: (id) => `${id}` },
+        id: { name: "rowid" },
         userId: { name: "userId" },
         documentId: { name: "documentId" },
         annotationId: { name: "annotationId" },
@@ -63,7 +67,7 @@ export default SQLResolverGenerator({
     DocumentMembers: {
       table: "documentMembers",
       columns: {
-        id: { name: "rowid", transform: (id) => `${id}` },
+        id: { name: "rowid" },
         userId: { name: "userId" },
         documentId: { name: "documentId" },
         lastRead: { name: "lastRead" },
@@ -74,7 +78,7 @@ export default SQLResolverGenerator({
     Mentions: {
       table: "mentions",
       columns: {
-        id: { name: "rowid", transform: (id) => `${id}` },
+        id: { name: "rowid" },
         userId: { name: "userId" },
         documentId: { name: "documentId" },
         annotationId: { name: "annotationId" },
